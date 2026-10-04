@@ -1,44 +1,70 @@
 // src/App.js
-import React, { useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import React, { useState } from 'react';
+import styled from 'styled-components';
+import { motion, useScroll, useSpring } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import Home from './pages/Home';
-import About from './pages/About';
-import Experience from './pages/Experience';
-import Projects from './pages/Projects';
-import Contact from './pages/Contact';
-import './App.css';
-import './index.css'; // Import global styles
+import Buddy from './components/Buddy';
+import LogoMarquee from './components/LogoMarquee';
+import Hero from './sections/Hero';
+import About from './sections/About';
+import Experience from './sections/Experience';
+import Skills from './sections/Skills';
+import Work from './sections/Work';
+import Education from './sections/Education';
+import Contact from './sections/Contact';
+
+const ProgressBar = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 200;
+  transform-origin: 0%;
+  background: ${({ theme }) => theme.colors.primary};
+`;
+
+const readBuddyPref = () => {
+  try {
+    return localStorage.getItem('buddy') !== 'off';
+  } catch {
+    return true;
+  }
+};
 
 function App() {
-  useEffect(() => {
-    const lightCircle = document.getElementById('light-circle');
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
+  const [buddyOn, setBuddyOn] = useState(readBuddyPref);
 
-    const handleMouseMove = (e) => {
-      lightCircle.style.left = `${e.pageX}px`;
-      lightCircle.style.top = `${e.pageY}px`;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, []);
+  const toggleBuddy = () => {
+    setBuddyOn((on) => {
+      try {
+        localStorage.setItem('buddy', on ? 'off' : 'on');
+      } catch {
+        // storage unavailable; preference lasts for this visit only
+      }
+      return !on;
+    });
+  };
 
   return (
     <>
-      <div id="light-circle"></div> {/* Light Circle element */}
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/experience" element={<Experience />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/contact" element={<Contact />} />
-      </Routes>
+      <ProgressBar style={{ scaleX }} />
+      <Navbar buddyOn={buddyOn} onToggleBuddy={toggleBuddy} />
+      <main>
+        <Hero />
+        <LogoMarquee />
+        <About />
+        <Experience />
+        <Skills />
+        <Work />
+        <Education />
+        <Contact />
+      </main>
       <Footer />
+      {buddyOn && <Buddy />}
     </>
   );
 }
