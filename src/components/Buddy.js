@@ -15,19 +15,28 @@ import {
 } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
 import BuddyBot, { BuddyGlyph, VIEW_H, VIEW_W } from './BuddyBot';
-import { buddyFacts, buddyLines, buddyReactions } from '../data/profile';
+import { buddyFacts, buddyHype, buddyInfo, buddyLines, buddyReactions } from '../data/profile';
 
 export { BuddyGlyph };
 
 const RATIO = VIEW_H / VIEW_W;
-const TALK_COOLDOWN_MS = 16000;
-const IDLE_TALK_MS = 24000;
-const SLEEP_AFTER_MS = 25000;
+const TALK_COOLDOWN_MS = 9000;
+const IDLE_TALK_MS = 14000; // chats roughly this often while you hang around
+const SLEEP_AFTER_MS = 90000;
+const WANDER_AFTER_IDLE_MS = 3000; // only strolls off once you've left it alone for a bit
+const IDLE_KINDS = ['section', 'hype', 'fact'];
 
 const rand = (min, max) => min + Math.random() * (max - min);
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
-const sectionOf = (perchId) => (perchId && perchId.startsWith('exp-') ? 'experience' : perchId);
+// Perch ids look like "skills", "exp-2" or, while strolling, "wander:skills:3".
+const basePerch = (perchId) => (perchId && perchId.startsWith('wander:') ? perchId.split(':')[1] : perchId);
+const sectionOf = (perchId) => {
+  const base = basePerch(perchId);
+  return base && base.startsWith('exp-') ? 'experience' : base;
+};
+// Long enough to read comfortably (~4 words/second), but never lingering.
+const readingTime = (text) => clamp(1800 + text.split(/\s+/).length * 260, 5000, 9000);
 
 // What Probe does when it arrives in a section, and what it gets up to while idling there.
 const SECTION_MOODS = {
@@ -228,6 +237,10 @@ const Buddy = () => {
   const lastDizzy = useRef(0);
   const hoverTimer = useRef();
   const particleId = useRef(0);
+  const idleTurn = useRef(0);
+  const hypeIdx = useRef(Math.floor(Math.random() * buddyHype.length));
+  const clicksInSection = useRef(0);
+  const wanderCount = useRef(0);
 
   // setTimeout that is cleared automatically when Probe unmounts.
   const later = useCallback((fn, ms) => {
@@ -288,7 +301,7 @@ const Buddy = () => {
       const typingMs = reduce ? 0 : 650;
       setMsg({ key, text, typing: typingMs > 0 });
       later(() => setMsg((m) => (m && m.key === key ? { ...m, typing: false } : m)), typingMs);
-      later(() => setMsg((m) => (m && m.key === key ? null : m)), typingMs + Math.min(4500 + text.length * 45, 10500));
+      later(() => setMsg((m) => (m && m.key === key ? null : m)), typingMs + readingTime(text));
     },
     [reduce, later]
   );
@@ -299,12 +312,18 @@ const Buddy = () => {
     return fact;
   }, []);
 
-  // Alternate between the section's own lines and general QA / agent facts.
+  // Rotate between a remark about the current section, some hype about Mithul, and a QA / agents fact.
   const nextIdleLine = useCallback(
     (sec) => {
+      const kind = IDLE_KINDS[idleTurn.current % IDLE_KINDS.length];
+      idleTurn.current += 1;
+      if (kind === 'hype') {
+        hypeIdx.current += 1;
+        return buddyHype[hypeIdx.current % buddyHype.length];
+      }
       const lines = buddyLines[sec] || [];
-      const i = lineIdx.current[sec] ?? 1;
-      if (lines.length > 1 && Math.random() < 0.55) {
+      if (kind === 'section' && lines.length > 1) {
+        const i = lineIdx.current[sec] ?? 1; // line 0 is the arrival intro
         lineIdx.current[sec] = i + 1 >= lines.length ? 1 : i + 1;
         return lines[i];
       }
@@ -496,6 +515,44 @@ const Buddy = () => {
     setSpot(next);
   }, [size, height, reduce, eyeXRaw]);
 
+  // Stroll to the top edge of a heading or card that's currently on screen.
+  const wander = useCallback(() => {
+    const current = spotRef.current;
+    if (!current || reduce) return false;
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    const ledges = [];
+    document.querySelectorAll('h2, h3, article, figure, blockquote, [data-perch]').forEach((el) => {
+      if (el.closest('[data-buddy]')) return;
+      const r = el.getBoundingClientRect();
+      if (r.width > size * 1.5 && r.top > 110 && r.top < vh - 60) ledges.push(r);
+    });
+    if (!ledges.length) return false;
+
+    const r = pick(ledges);
+    const x = clamp(rand(r.left, r.right - size), 8, vw - size - 8) + window.scrollX;
+    const y = r.top - height + 3 + window.scrollY;
+    const dist = Math.hypot(x - current.x, y - current.y);
+    if (dist < 60) return false;
+
+    wanderCount.current += 1;
+    facingRef.current = x < current.x ? -1 : 1;
+    setFacing(facingRef.current);
+    walkingRef.current = true;
+    setWalking(true);
+    setExpression('normal');
+    eyeXRaw.set(2.5);
+    const next = {
+      id: `wander:${basePerch(current.id)}:${wanderCount.current}`,
+      x,
+      y,
+      duration: clamp(0.8 + dist / 450, 0.9, 3), // a leisurely stroll
+    };
+    spotRef.current = next;
+    setSpot(next);
+    return true;
+  }, [size, height, reduce, eyeXRaw]);
+
   const handleArrive = () => {
     if (walkingRef.current) {
       walkingRef.current = false;
@@ -514,9 +571,16 @@ const Buddy = () => {
       return;
     }
 
+    // Finished a stroll: have a little look around.
+    if (current.id.startsWith('wander:')) {
+      if (Math.random() < 0.5) later(() => run('look'), 300);
+      return;
+    }
+
     const sec = sectionOf(current.id);
     if (sec === section.current) return;
     section.current = sec;
+    clicksInSection.current = 0;
     const mood = SECTION_MOODS[sec] || SECTION_MOODS.hero;
     later(() => run(mood.enter), 350);
 
@@ -539,10 +603,14 @@ const Buddy = () => {
     window.addEventListener('resize', schedule);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
     ro?.observe(document.body);
-    const first = setTimeout(measure, 900);
+    // Show up right away, then settle once web fonts have changed the layout.
+    const frame = requestAnimationFrame(measure);
+    document.fonts?.ready.then(() => mounted.current && measure());
+    const fallback = setTimeout(measure, 900);
     return () => {
       clearTimeout(t);
-      clearTimeout(first);
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       ro?.disconnect();
@@ -591,15 +659,17 @@ const Buddy = () => {
         const free = !walkingRef.current && !busy.current && !hovering.current && !sleeping.current;
         if (free && spotRef.current && document.visibilityState === 'visible') {
           const sec = section.current || 'hero';
-          run(pick((SECTION_MOODS[sec] || SECTION_MOODS.hero).idle));
+          const leftAlone = Date.now() - lastActivity.current > WANDER_AFTER_IDLE_MS;
+          const strolled = leftAlone && Math.random() < 0.45 && wander();
+          if (!strolled) run(pick((SECTION_MOODS[sec] || SECTION_MOODS.hero).idle));
           if (Date.now() - lastTalk.current > IDLE_TALK_MS) say(nextIdleLine(sec));
         }
         loop();
-      }, rand(5500, 9500));
+      }, rand(4500, 8000));
     };
     loop();
     return () => clearTimeout(t);
-  }, [run, say, nextIdleLine]);
+  }, [run, say, nextIdleLine, wander]);
 
   // Naps when nobody's around; wakes up on any activity. Speed-scrolling makes it dizzy.
   useEffect(() => {
@@ -674,10 +744,14 @@ const Buddy = () => {
     if (!busy.current) restore();
   };
 
+  // Clicking gives info about the current section first, then the usual mix of hype and facts.
   const onClick = () => {
     const sec = section.current || 'hero';
+    const info = buddyInfo[sec] || [];
+    const n = clicksInSection.current;
+    clicksInSection.current += 1;
     run(pick(['hop', 'spin', 'sparkle']));
-    say(nextIdleLine(sec), { force: true });
+    say(n < info.length ? info[n] : nextIdleLine(sec), { force: true });
   };
 
   if (!spot) return null;

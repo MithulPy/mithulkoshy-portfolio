@@ -25,9 +25,11 @@ const ProgressBar = styled(motion.div)`
   background: ${({ theme }) => theme.colors.primary};
 `;
 
+// Probe is on by default; only an explicit "hide" from the navbar turns it off.
+const BUDDY_KEY = 'probe-visible';
 const readBuddyPref = () => {
   try {
-    return localStorage.getItem('buddy') !== 'off';
+    return localStorage.getItem(BUDDY_KEY) !== 'off';
   } catch {
     return true;
   }
@@ -41,7 +43,7 @@ function App() {
   const toggleBuddy = () => {
     setBuddyOn((on) => {
       try {
-        localStorage.setItem('buddy', on ? 'off' : 'on');
+        localStorage.setItem(BUDDY_KEY, on ? 'off' : 'on');
       } catch {
         // storage unavailable; preference lasts for this visit only
       }

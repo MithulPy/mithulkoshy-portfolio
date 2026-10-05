@@ -1,5 +1,9 @@
 // src/data/profile.js
 // Single source of truth for portfolio content (kept free of private details such as phone numbers).
+import risingStar from '../assets/rising-star.webp';
+import risingStarThumb from '../assets/rising-star-thumb.webp';
+import shiningStar from '../assets/shining-star.webp';
+import shiningStarThumb from '../assets/shining-star-thumb.webp';
 
 export const profile = {
   name: 'Mithul Titten Koshy',
@@ -186,12 +190,16 @@ export const awards = [
     org: 'USTAR Recognition · UST',
     quote:
       'Delivered outstanding results completing QE360+GenAI automation across applications within a cloud migration project on schedule despite challenges. As an excellent mentor, he shared knowledge with juniors.',
+    image: shiningStar,
+    thumb: shiningStarThumb,
   },
   {
     name: 'Rising Star',
     org: 'USTAR Recognition · UST',
     quote:
       'Showcased that learning new things brings success to oneself and the team. His primary skill is Python; however, he upskilled himself to Angular and quickly became a full stack developer.',
+    image: risingStar,
+    thumb: risingStarThumb,
   },
 ];
 
@@ -263,6 +271,53 @@ export const buddyLines = {
     'Psst… the email button works. I tested it. Obviously.',
   ],
 };
+
+// What Probe tells you when you click it: info about the section you're in comes first.
+export const buddyInfo = {
+  hero: [
+    'Mithul is a Software Engineer in Test at UST, building agentic QA workflows with Playwright and TypeScript.',
+    'Scroll on and I’ll show you around: experience, skills, work and awards.',
+  ],
+  about: [
+    'Mithul has 5+ years in QA and test automation across financial services, insurance and eCommerce.',
+    'His focus: AI agents that write BDD/TDD tests, test packs and scripts, with engineers reviewing every output.',
+  ],
+  experience: [
+    'Current role: Senior Quality Engineer at UST since Nov 2024, leading automation and building agentic AI systems.',
+    'Before that: productgrid.ai, WIMTACH and Teranet in Toronto, and an automation engineer role at UST.',
+    'Highlights: C# + Selenium regression suites at Teranet and Unreal Engine game QA at WIMTACH.',
+  ],
+  skills: [
+    'Daily stack: Playwright + TypeScript, plus Selenium, WebdriverIO and Cypress.',
+    'AI tooling: Claude, Copilot and Codex, used to build agents that generate tests.',
+    'Also on the list: REST and GraphQL API testing, Appium for mobile, Jenkins and Azure DevOps for CI/CD.',
+  ],
+  work: [
+    'The starred projects are agentic systems: an AI QA workbench and a BDD/TDD test generator.',
+    'Watch the pipelines on each card. They show how each system flows, like Story → Agents → Test pack → Scripts.',
+  ],
+  recognition: [
+    'Shining Star: QE360 + GenAI automation in a cloud migration project. Hit “View certificate” for proof!',
+    'Rising Star: went from Python to Angular and shipped full-stack features fast.',
+    'Also: 1st place at the BlueSalt × WIMTACH hackathon and a 2019 journal publication.',
+  ],
+  contact: [
+    'Best way to reach Mithul: the email button, or LinkedIn.',
+    'He’s open to SDET, QA automation and AI-for-testing roles.',
+  ],
+};
+
+// Probe hyping up Mithul while you hang around.
+export const buddyHype = [
+  'Honestly? 5+ years of making software not break. Mithul’s kind of a big deal.',
+  'Agents that write tests, built by a human who writes great tests. Peak QA.',
+  'Two USTAR awards. I’d give him a third if I had thumbs.',
+  'Fintech, insurance, eCommerce… he’s tested the stuff your money runs on.',
+  'He mentors QA engineers too. I like to think I’m one of his students.',
+  'Python → Angular → Playwright → AI agents. He levels up like a game character.',
+  'Hiring managers, take notes: this is what an Automation Lead looks like.',
+  'Toronto, Doha, Kerala. Tested across continents, never flaky.',
+];
 
 export const buddyReactions = {
   tickle: ['Hehe, that tickles!', 'Careful, I’m ticklish!', 'Boop received 💗'],
